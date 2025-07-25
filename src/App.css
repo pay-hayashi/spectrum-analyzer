@@ -1,0 +1,212 @@
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.app h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.dropzone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 3rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #fafafa;
+  margin-bottom: 2rem;
+}
+
+.dropzone:hover,
+.dropzone.active {
+  border-color: #007bff;
+  background-color: #e3f2fd;
+}
+
+.dropzone p {
+  margin: 0;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.file-info {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.file-info h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.file-info p {
+  margin: 0.5rem 0;
+  color: #666;
+}
+
+.error-message {
+  background-color: #ffe6e6;
+  border: 1px solid #ff9999;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  color: #cc0000;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-style: italic;
+}
+
+.analysis-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.spectrum-display,
+.fundamental-frequency-display {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  min-height: 400px;
+}
+
+.spectrum-display h3,
+.fundamental-frequency-display h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 0.5rem;
+}
+
+.chart-container {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.overlay-chart {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.overlay-chart svg {
+  background: transparent !important;
+  border: none !important;
+}
+
+.current-note-info {
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1rem;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.current-note-info p {
+  margin: 0.3rem 0;
+  color: #1976d2;
+  min-height: 1.5em;
+}
+
+.hover-info {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.hover-info p {
+  margin: 0.2rem 0;
+}
+
+@media (max-width: 768px) {
+  .app {
+    padding: 1rem;
+  }
+  
+  .dropzone {
+    padding: 2rem 1rem;
+  }
+
+  .spectrum-display,
+  .fundamental-frequency-display {
+    padding: 1rem;
+    min-height: 300px;
+  }
+
+  .chart-container {
+    overflow-x: auto;
+  }
+
+  .current-note-info {
+    padding: 0.8rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 0.5rem;
+  }
+
+  .app h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .dropzone {
+    padding: 1.5rem 0.5rem;
+  }
+
+  .dropzone p {
+    font-size: 1rem;
+  }
+
+  .file-info {
+    padding: 1rem;
+  }
+
+  .file-info h3 {
+    font-size: 1.1rem;
+  }
+
+  .file-info p {
+    font-size: 0.9rem;
+  }
+
+  .spectrum-display h3,
+  .fundamental-frequency-display h3 {
+    font-size: 1.1rem;
+  }
+
+  .current-note-info {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .current-note-info p {
+    margin: 0.2rem 0;
+  }
+}
