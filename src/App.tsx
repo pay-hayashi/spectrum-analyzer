@@ -167,15 +167,6 @@ function App() {
                 />
               </div>
             </div>
-          </div>
-          <div className="fundamental-frequency-display">
-            <h3>基本周波数推移</h3>
-            <FundamentalFrequencyChart
-              data={fundamentalData}
-              width={800}
-              height={300}
-              onHover={handleNoteHover}
-            />
             <div className="current-note-info">
               <p><strong>現在の音階:</strong> {hoveredNote ? `${hoveredNote.name}${hoveredNote.octave}` : '-'}</p>
               <p><strong>時間:</strong> {hoveredTime !== null ? `${hoveredTime.toFixed(2)}秒` : '-'}</p>

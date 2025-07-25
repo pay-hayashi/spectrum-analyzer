@@ -100,12 +100,16 @@
   position: absolute;
   top: 0;
   left: 0;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .overlay-chart svg {
   background: transparent !important;
   border: none !important;
+}
+
+.chart-container .spectrogram-chart {
+  pointer-events: none;
 }
 
 .current-note-info {
