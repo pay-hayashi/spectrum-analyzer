@@ -1,8 +1,9 @@
 .app {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   padding: 2rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-sizing: border-box;
 }
 
 .app h1 {
@@ -94,6 +95,8 @@
 .chart-container {
   position: relative;
   margin-bottom: 2rem;
+  width: 100%;
+  overflow-x: auto;
 }
 
 .overlay-chart {
@@ -158,10 +161,6 @@
   .fundamental-frequency-display {
     padding: 1rem;
     min-height: 300px;
-  }
-
-  .chart-container {
-    overflow-x: auto;
   }
 
   .current-note-info {

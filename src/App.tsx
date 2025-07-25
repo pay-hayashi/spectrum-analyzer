@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useAudioProcessor } from './hooks/useAudioProcessor';
 import { AudioAnalyzer } from './utils/audioAnalysis';
@@ -15,8 +15,38 @@ function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hoveredNote, setHoveredNote] = useState<Note | null>(null);
   const [hoveredTime, setHoveredTime] = useState<number | null>(null);
+  const [chartWidth, setChartWidth] = useState(800);
   
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
   const { audioData, isLoading, error, processAudioFile, clearAudioData } = useAudioProcessor();
+
+  // ウィンドウリサイズ時にチャートの幅を更新
+  useEffect(() => {
+    const updateChartWidth = () => {
+      // chart-containerの幅を直接使用
+      if (chartContainerRef.current) {
+        const availableWidth = chartContainerRef.current.clientWidth;
+        const newWidth = Math.max(400, availableWidth - 20); // マージンを少し残す
+        setChartWidth(newWidth);
+      } else if (containerRef.current) {
+        // フォールバック：app全体の幅から推測
+        const containerWidth = containerRef.current.clientWidth;
+        const estimatedWidth = containerWidth - 112; // 推定パディング
+        const newWidth = Math.max(400, estimatedWidth);
+        setChartWidth(newWidth);
+      }
+    };
+
+    // 少し遅延させてレンダリング後に実行
+    const timer = setTimeout(updateChartWidth, 200);
+    window.addEventListener('resize', updateChartWidth);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateChartWidth);
+    };
+  }, [spectrogramData]); // spectrogramDataが設定された時も再計算
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -105,7 +135,7 @@ function App() {
   });
 
   return (
-    <div className="app">
+    <div className="app" ref={containerRef}>
       <h1>スペクトル解析器</h1>
       
       <div
@@ -151,16 +181,16 @@ function App() {
         <div className="analysis-container">
           <div className="spectrum-display">
             <h3>スペクトログラム + 基本周波数推移</h3>
-            <div className="chart-container">
+            <div className="chart-container" ref={chartContainerRef}>
               <SpectrogramChart 
                 data={spectrogramData} 
-                width={800} 
+                width={chartWidth} 
                 height={400} 
               />
               <div className="overlay-chart">
                 <FundamentalFrequencyChart
                   data={fundamentalData}
-                  width={800}
+                  width={chartWidth}
                   height={400}
                   onHover={handleNoteHover}
                   hideAxes={true}
