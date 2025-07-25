@@ -66,8 +66,8 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
     g.append("path")
       .datum(lineData)
       .attr("fill", "none")
-      .attr("stroke", "#007bff")
-      .attr("stroke-width", 2)
+      .attr("stroke", "#ff6b35")  // 明るいオレンジ色
+      .attr("stroke-width", 1)    // さらに細く、スペクトログラムの詳細を最大限に活かす
       .attr("d", line);
 
     const circles = g.selectAll("circle")
@@ -76,8 +76,8 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
       .append("circle")
       .attr("cx", d => xScale(d.time))
       .attr("cy", d => yScale(d.frequency))
-      .attr("r", 3)
-      .attr("fill", "#007bff")
+      .attr("r", 3)  // 少し小さくしてスペクトログラムを見やすく
+      .attr("fill", "#ff6b35")  // 明るいオレンジ色
       .style("cursor", "pointer");
 
     let currentTooltip: any = null;
@@ -97,7 +97,7 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
         }
 
         d3.select(event.currentTarget)
-          .attr("r", 5)
+          .attr("r", 5)  // ホバー時も少し小さめに
           .attr("fill", MusicTheoryUtils.getNoteColor(note.name));
 
         currentTooltip = g.append("g")
@@ -129,8 +129,8 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
         }, 50);
 
         d3.select(event.currentTarget)
-          .attr("r", 3)
-          .attr("fill", "#007bff");
+          .attr("r", 3)  // 通常時のサイズに戻す
+          .attr("fill", "#ff6b35");
 
         if (currentTooltip) {
           currentTooltip.remove();

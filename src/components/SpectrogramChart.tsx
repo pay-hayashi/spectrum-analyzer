@@ -51,8 +51,11 @@ export const SpectrogramChart: React.FC<SpectrogramChartProps> = ({
       }
     }
     
-    const colorScale = d3.scaleSequential(d3.interpolateViridis)
-      .domain([0, maxMagnitude]);
+    // より鮮やかで見やすいカスタムカラースケールを使用
+    const colorScale = d3.scaleLinear()
+      .domain([0, maxMagnitude * 0.3, maxMagnitude * 0.7, maxMagnitude])
+      .range(["#000033", "#0066cc", "#ffaa00", "#ff3300"]) // 濃い青→青→オレンジ→赤
+      .interpolate(d3.interpolateRgb);
 
     const timeStep = innerWidth / data.times.length;
     const frequencyStep = innerHeight / data.frequencies.length;
@@ -78,7 +81,7 @@ export const SpectrogramChart: React.FC<SpectrogramChartProps> = ({
           .attr("width", timeStep)
           .attr("height", rectHeight)
           .attr("fill", colorScale(magnitude))
-          .attr("opacity", 0.8);
+          .attr("opacity", 0.9);  // 不透明度を上げてより鮮明に
       });
     });
 
