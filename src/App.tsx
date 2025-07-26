@@ -15,6 +15,7 @@ function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hoveredNote, setHoveredNote] = useState<Note | null>(null);
   const [hoveredTime, setHoveredTime] = useState<number | null>(null);
+  const [hoveredConfidence, setHoveredConfidence] = useState<number | null>(null);
   const [chartWidth, setChartWidth] = useState(800);
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -115,13 +116,14 @@ function App() {
     }
   }, [audioData, spectrogramData, fundamentalData, isAnalyzing]);
 
-  const handleNoteHover = useCallback((note: Note | null, time: number | null) => {
+  const handleNoteHover = useCallback((note: Note | null, time: number | null, confidence?: number) => {
     // 同じ値の場合は更新をスキップ
     if (note?.frequency === hoveredNote?.frequency && time === hoveredTime) {
       return;
     }
     setHoveredNote(note);
     setHoveredTime(time);
+    setHoveredConfidence(confidence ?? null);
   }, [hoveredNote?.frequency, hoveredTime]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -207,6 +209,7 @@ function App() {
               {(!hoveredNote || Math.abs(hoveredNote?.cents || 0) <= 5) && (
                 <p><strong>音程のずれ:</strong> -</p>
               )}
+              <p><strong>信頼度:</strong> {hoveredConfidence !== null ? `${(hoveredConfidence * 100).toFixed(1)}%` : '-'}</p>
             </div>
           </div>
         </div>

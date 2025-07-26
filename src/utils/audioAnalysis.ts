@@ -9,6 +9,7 @@ export interface SpectrogramData {
 export interface FundamentalFrequencyData {
   times: number[];
   frequencies: number[];
+  confidences: number[];
 }
 
 export class AudioAnalyzer {
@@ -59,18 +60,25 @@ export class AudioAnalyzer {
 
   public extractFundamentalFrequency(spectrogramData: SpectrogramData): FundamentalFrequencyData {
     const fundamentalFrequencies: number[] = [];
+    const confidences: number[] = [];
     
-    for (const magnitudeFrame of spectrogramData.magnitudes) {
-      const fundamental = this.estimateFundamentalFrequency(
+    for (let i = 0; i < spectrogramData.magnitudes.length; i++) {
+      const magnitudeFrame = spectrogramData.magnitudes[i];
+      const result = this.estimateFundamentalFrequencyWithConfidence(
         spectrogramData.frequencies,
-        magnitudeFrame
+        magnitudeFrame,
+        i > 0 ? fundamentalFrequencies[i - 1] : 0,
+        spectrogramData.magnitudes,
+        i
       );
-      fundamentalFrequencies.push(fundamental);
+      fundamentalFrequencies.push(result.frequency);
+      confidences.push(result.confidence);
     }
 
     return {
       times: spectrogramData.times,
-      frequencies: fundamentalFrequencies
+      frequencies: fundamentalFrequencies,
+      confidences
     };
   }
 
@@ -106,7 +114,20 @@ export class AudioAnalyzer {
   }
 
   private estimateFundamentalFrequency(frequencies: number[], magnitudes: number[]): number {
-    if (magnitudes.length === 0) return 0;
+    const result = this.estimateFundamentalFrequencyWithConfidence(
+      frequencies, magnitudes, 0, [], 0
+    );
+    return result.frequency;
+  }
+
+  private estimateFundamentalFrequencyWithConfidence(
+    frequencies: number[], 
+    magnitudes: number[], 
+    previousFreq: number,
+    allMagnitudes: number[][],
+    frameIndex: number
+  ): { frequency: number; confidence: number } {
+    if (magnitudes.length === 0) return { frequency: 0, confidence: 0 };
 
     const minFreq = 80;
     const maxFreq = 2000;
@@ -114,9 +135,9 @@ export class AudioAnalyzer {
     const startIdx = frequencies.findIndex(f => f >= minFreq);
     const endIdx = frequencies.findIndex(f => f >= maxFreq);
     
-    if (startIdx === -1 || endIdx === -1) return 0;
+    if (startIdx === -1 || endIdx === -1) return { frequency: 0, confidence: 0 };
 
-    const candidateFrequencies: { freq: number; strength: number }[] = [];
+    const candidateFrequencies: { freq: number; strength: number; confidence: number }[] = [];
     
     for (let i = startIdx; i < endIdx; i++) {
       const freq = frequencies[i];
@@ -127,18 +148,27 @@ export class AudioAnalyzer {
           freq, frequencies, magnitudes
         );
         
+        const confidence = this.calculateConfidence(
+          freq, magnitude, harmonicStrength, frequencies, magnitudes,
+          previousFreq, allMagnitudes, frameIndex
+        );
+        
         candidateFrequencies.push({
           freq,
-          strength: magnitude * harmonicStrength
+          strength: magnitude * harmonicStrength,
+          confidence
         });
       }
     }
 
-    if (candidateFrequencies.length === 0) return 0;
+    if (candidateFrequencies.length === 0) return { frequency: 0, confidence: 0 };
 
     candidateFrequencies.sort((a, b) => b.strength - a.strength);
     
-    return candidateFrequencies[0].freq;
+    return {
+      frequency: candidateFrequencies[0].freq,
+      confidence: candidateFrequencies[0].confidence
+    };
   }
 
   private calculateHarmonicStrength(
@@ -174,5 +204,44 @@ export class AudioAnalyzer {
     }
     
     return closestIdx;
+  }
+
+  private calculateConfidence(
+    frequency: number,
+    magnitude: number,
+    harmonicStrength: number,
+    frequencies: number[],
+    magnitudes: number[],
+    previousFreq: number,
+    allMagnitudes: number[][],
+    frameIndex: number
+  ): number {
+    // 1. エネルギー比による信頼度（0-25%）
+    const totalEnergy = magnitudes.reduce((sum, mag) => sum + mag * mag, 0);
+    const signalEnergy = magnitude * magnitude;
+    const energyRatio = Math.min(signalEnergy / totalEnergy, 0.25);
+    const energyConfidence = energyRatio * 4; // 0-1に正規化
+
+    // 2. 倍音構造による信頼度（0-25%）
+    const harmonicConfidence = Math.min((harmonicStrength - 1) / 4, 0.25) * 4;
+
+    // 3. 時間的連続性による信頼度（0-25%）
+    let temporalConfidence = 0.25;
+    if (previousFreq > 0 && frequency > 0) {
+      const freqRatio = Math.min(frequency, previousFreq) / Math.max(frequency, previousFreq);
+      temporalConfidence = Math.min(freqRatio, 0.25) * 4;
+    }
+
+    // 4. 信号対雑音比による信頼度（0-25%）
+    const sortedMagnitudes = [...magnitudes].sort((a, b) => b - a);
+    const noiseLevel = sortedMagnitudes.slice(Math.floor(sortedMagnitudes.length * 0.8))
+      .reduce((sum, mag) => sum + mag, 0) / (sortedMagnitudes.length * 0.2);
+    const snr = magnitude / (noiseLevel + 1e-10);
+    const snrConfidence = Math.min(Math.log10(snr + 1) / 2, 0.25) * 4;
+
+    // 総合信頼度を計算（0-1の範囲）
+    const totalConfidence = (energyConfidence + harmonicConfidence + temporalConfidence + snrConfidence) / 4;
+    
+    return Math.max(0, Math.min(1, totalConfidence));
   }
 }

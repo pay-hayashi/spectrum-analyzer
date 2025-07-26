@@ -8,7 +8,7 @@ interface FundamentalFrequencyChartProps {
   data: FundamentalFrequencyData;
   width?: number;
   height?: number;
-  onHover?: (note: Note | null, time: number | null) => void;
+  onHover?: (note: Note | null, time: number | null, confidence?: number) => void;
   hideAxes?: boolean; // 軸とラベルを非表示にするオプション
 }
 
@@ -60,7 +60,8 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
 
     const lineData = data.times.map((time, index) => ({
       time,
-      frequency: data.frequencies[index]
+      frequency: data.frequencies[index],
+      confidence: data.confidences[index]
     }));
 
     g.append("path")
@@ -93,7 +94,7 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
         if (!hoveredNote || hoveredNote.frequency !== note.frequency || hoveredTime !== d.time) {
           setHoveredNote(note);
           setHoveredTime(d.time);
-          onHover?.(note, d.time);
+          onHover?.(note, d.time, d.confidence);
         }
 
         d3.select(event.currentTarget)
@@ -125,7 +126,7 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
         setTimeout(() => {
           setHoveredNote(null);
           setHoveredTime(null);
-          onHover?.(null, null);
+          onHover?.(null, null, undefined);
         }, 50);
 
         d3.select(event.currentTarget)
