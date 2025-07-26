@@ -113,12 +113,6 @@ export class AudioAnalyzer {
     return magnitude.slice(0, this.fftSize / 2);
   }
 
-  private estimateFundamentalFrequency(frequencies: number[], magnitudes: number[]): number {
-    const result = this.estimateFundamentalFrequencyWithConfidence(
-      frequencies, magnitudes, 0, [], 0
-    );
-    return result.frequency;
-  }
 
   private estimateFundamentalFrequencyWithConfidence(
     frequencies: number[], 
@@ -210,11 +204,11 @@ export class AudioAnalyzer {
     frequency: number,
     magnitude: number,
     harmonicStrength: number,
-    frequencies: number[],
+    _frequencies: number[],
     magnitudes: number[],
     previousFreq: number,
-    allMagnitudes: number[][],
-    frameIndex: number
+    _allMagnitudes: number[][],
+    _frameIndex: number
   ): number {
     // 1. エネルギー比による信頼度（0-25%）
     const totalEnergy = magnitudes.reduce((sum, mag) => sum + mag * mag, 0);

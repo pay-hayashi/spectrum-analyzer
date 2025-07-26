@@ -52,13 +52,12 @@ export const SpectrogramChart: React.FC<SpectrogramChartProps> = ({
     }
     
     // より鮮やかで見やすいカスタムカラースケールを使用
-    const colorScale = d3.scaleLinear()
+    const colorScale = d3.scaleLinear<string>()
       .domain([0, maxMagnitude * 0.3, maxMagnitude * 0.7, maxMagnitude])
       .range(["#000033", "#0066cc", "#ffaa00", "#ff3300"]) // 濃い青→青→オレンジ→赤
       .interpolate(d3.interpolateRgb);
 
     const timeStep = innerWidth / data.times.length;
-    const frequencyStep = innerHeight / data.frequencies.length;
 
     data.times.forEach((time, timeIndex) => {
       const magnitudeFrame = data.magnitudes[timeIndex];
