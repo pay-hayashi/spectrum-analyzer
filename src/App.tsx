@@ -59,20 +59,23 @@ function App() {
       });
       
       // ファイル名の拡張子とMIMEタイプの両方をチェック
-      const isM4a = file.name.toLowerCase().endsWith('.m4a') || 
-                    file.type === 'audio/mp4' || 
-                    file.type === 'audio/x-m4a' || 
-                    file.type === 'audio/aac' ||
-                    file.type === '';  // 一部のシステムでMIMEタイプが空の場合がある
+      const isSupportedAudio = file.name.toLowerCase().endsWith('.m4a') || 
+                               file.name.toLowerCase().endsWith('.mp3') ||
+                               file.type === 'audio/mp4' || 
+                               file.type === 'audio/x-m4a' || 
+                               file.type === 'audio/aac' ||
+                               file.type === 'audio/mpeg' ||
+                               file.type === 'audio/mp3' ||
+                               file.type === '';  // 一部のシステムでMIMEタイプが空の場合がある
       
-      if (isM4a) {
+      if (isSupportedAudio) {
         setAudioFile(file);
         clearAudioData();
         setSpectrogramData(null);
         setFundamentalData(null);
         processAudioFile(file);
       } else {
-        alert(`サポートされていないファイル形式です。\nファイル名: ${file.name}\nMIMEタイプ: ${file.type || '不明'}\nm4aファイルを選択してください。`);
+        alert(`サポートされていないファイル形式です。\nファイル名: ${file.name}\nMIMEタイプ: ${file.type || '不明'}\nm4aまたはmp3ファイルを選択してください。`);
       }
     }
   }, [processAudioFile, clearAudioData]);
@@ -131,7 +134,9 @@ function App() {
     accept: {
       'audio/mp4': ['.m4a'],
       'audio/x-m4a': ['.m4a'], 
-      'audio/aac': ['.m4a']
+      'audio/aac': ['.m4a'],
+      'audio/mpeg': ['.mp3'],
+      'audio/mp3': ['.mp3']
     },
     multiple: false
   });
@@ -146,9 +151,9 @@ function App() {
       >
         <input {...getInputProps()} />
         {isDragActive ? (
-          <p>m4aファイルをドロップしてください...</p>
+          <p>音声ファイルをドロップしてください...</p>
         ) : (
-          <p>m4aファイルをドラッグ&ドロップするか、クリックして選択してください</p>
+          <p>m4aまたはmp3ファイルをドラッグ&ドロップするか、クリックして選択してください</p>
         )}
       </div>
 
