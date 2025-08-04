@@ -12,6 +12,22 @@ export interface FundamentalFrequencyData {
   confidences: number[];
 }
 
+export interface MultipleNotesData {
+  times: number[];
+  noteFrames: NoteFrame[];
+}
+
+export interface NoteFrame {
+  time: number;
+  notes: DetectedNote[];
+}
+
+export interface DetectedNote {
+  frequency: number;
+  confidence: number;
+  magnitude: number;
+}
+
 export class AudioAnalyzer {
   private fftSize: number;
   private hopSize: number;
@@ -79,6 +95,31 @@ export class AudioAnalyzer {
       times: spectrogramData.times,
       frequencies: fundamentalFrequencies,
       confidences
+    };
+  }
+
+  public extractMultipleNotes(spectrogramData: SpectrogramData, maxNotes: number = 5): MultipleNotesData {
+    const noteFrames: NoteFrame[] = [];
+    
+    for (let i = 0; i < spectrogramData.magnitudes.length; i++) {
+      const magnitudeFrame = spectrogramData.magnitudes[i];
+      const time = spectrogramData.times[i];
+      
+      const detectedNotes = this.detectMultipleNotesInFrame(
+        spectrogramData.frequencies,
+        magnitudeFrame,
+        maxNotes
+      );
+      
+      noteFrames.push({
+        time,
+        notes: detectedNotes
+      });
+    }
+
+    return {
+      times: spectrogramData.times,
+      noteFrames
     };
   }
 
@@ -237,5 +278,134 @@ export class AudioAnalyzer {
     const totalConfidence = (energyConfidence + harmonicConfidence + temporalConfidence + snrConfidence) / 4;
     
     return Math.max(0, Math.min(1, totalConfidence));
+  }
+
+  private detectMultipleNotesInFrame(
+    frequencies: number[],
+    magnitudes: number[],
+    maxNotes: number
+  ): DetectedNote[] {
+    const minFreq = 80;
+    const maxFreq = 2000;
+    const minMagnitude = 0.05;
+    
+    const startIdx = frequencies.findIndex(f => f >= minFreq);
+    const endIdx = frequencies.findIndex(f => f >= maxFreq);
+    
+    if (startIdx === -1 || endIdx === -1) return [];
+
+    const peaks = this.findPeaks(magnitudes, startIdx, endIdx, minMagnitude);
+    
+    const candidateNotes: DetectedNote[] = [];
+    
+    for (const peak of peaks) {
+      const frequency = frequencies[peak.index];
+      const magnitude = peak.magnitude;
+      
+      const harmonicStrength = this.calculateHarmonicStrength(
+        frequency, frequencies, magnitudes
+      );
+      
+      const confidence = this.calculateMultiNoteConfidence(
+        frequency, magnitude, harmonicStrength, frequencies, magnitudes
+      );
+      
+      if (confidence > 0.1) {
+        candidateNotes.push({
+          frequency,
+          confidence,
+          magnitude: magnitude * harmonicStrength
+        });
+      }
+    }
+
+    candidateNotes.sort((a, b) => b.magnitude - a.magnitude);
+    
+    const filteredNotes = this.filterOverlappingNotes(candidateNotes);
+    
+    return filteredNotes.slice(0, maxNotes);
+  }
+
+  private findPeaks(
+    magnitudes: number[],
+    startIdx: number,
+    endIdx: number,
+    minMagnitude: number
+  ): Array<{ index: number; magnitude: number }> {
+    const peaks: Array<{ index: number; magnitude: number }> = [];
+    
+    for (let i = startIdx + 1; i < endIdx - 1; i++) {
+      const current = magnitudes[i];
+      const prev = magnitudes[i - 1];
+      const next = magnitudes[i + 1];
+      
+      if (current > prev && current > next && current > minMagnitude) {
+        const leftNeighbor = magnitudes[i - 2] || 0;
+        const rightNeighbor = magnitudes[i + 2] || 0;
+        
+        if (current > leftNeighbor && current > rightNeighbor) {
+          peaks.push({ index: i, magnitude: current });
+        }
+      }
+    }
+    
+    return peaks;
+  }
+
+  private calculateMultiNoteConfidence(
+    _frequency: number,
+    magnitude: number,
+    harmonicStrength: number,
+    _frequencies: number[],
+    magnitudes: number[]
+  ): number {
+    const energyRatio = magnitude / (magnitudes.reduce((sum, mag) => sum + mag, 0) + 1e-10);
+    const energyConfidence = Math.min(energyRatio * 10, 0.4);
+    
+    const harmonicConfidence = Math.min((harmonicStrength - 1) / 3, 0.3);
+    
+    const sortedMagnitudes = [...magnitudes].sort((a, b) => b - a);
+    const noiseLevel = sortedMagnitudes.slice(Math.floor(sortedMagnitudes.length * 0.9))
+      .reduce((sum, mag) => sum + mag, 0) / (sortedMagnitudes.length * 0.1);
+    const snr = magnitude / (noiseLevel + 1e-10);
+    const snrConfidence = Math.min(Math.log10(snr + 1) / 3, 0.3);
+    
+    return Math.max(0, Math.min(1, energyConfidence + harmonicConfidence + snrConfidence));
+  }
+
+  private filterOverlappingNotes(notes: DetectedNote[]): DetectedNote[] {
+    if (notes.length <= 1) return notes;
+    
+    const filtered: DetectedNote[] = [];
+    const used = new Set<number>();
+    
+    for (let i = 0; i < notes.length; i++) {
+      if (used.has(i)) continue;
+      
+      const currentNote = notes[i];
+      let bestNote = currentNote;
+      let bestIndex = i;
+      
+      for (let j = i + 1; j < notes.length; j++) {
+        if (used.has(j)) continue;
+        
+        const otherNote = notes[j];
+        const frequencyRatio = Math.max(currentNote.frequency, otherNote.frequency) / 
+                              Math.min(currentNote.frequency, otherNote.frequency);
+        
+        if (frequencyRatio < 1.1) {
+          if (otherNote.magnitude > bestNote.magnitude) {
+            bestNote = otherNote;
+            bestIndex = j;
+          }
+          used.add(j);
+        }
+      }
+      
+      filtered.push(bestNote);
+      used.add(bestIndex);
+    }
+    
+    return filtered;
   }
 }

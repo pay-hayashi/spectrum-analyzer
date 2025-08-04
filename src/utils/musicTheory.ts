@@ -80,4 +80,16 @@ export class MusicTheoryUtils {
   public static isValidMusicalFrequency(frequency: number): boolean {
     return frequency >= 16.35 && frequency <= 7902.13;
   }
+
+  public static frequenciesToNotes(frequencies: number[]): Note[] {
+    return frequencies.map(freq => this.frequencyToNote(freq));
+  }
+
+  public static formatNotes(notes: Note[]): string {
+    return notes.map(note => this.formatNote(note)).join(', ');
+  }
+
+  public static getNotesColors(notes: Note[]): string[] {
+    return notes.map(note => this.getNoteColor(note.name));
+  }
 }

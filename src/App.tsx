@@ -2,20 +2,27 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useAudioProcessor } from './hooks/useAudioProcessor';
 import { AudioAnalyzer } from './utils/audioAnalysis';
-import type { SpectrogramData, FundamentalFrequencyData } from './utils/audioAnalysis';
+import type { SpectrogramData, FundamentalFrequencyData, MultipleNotesData } from './utils/audioAnalysis';
 import { SpectrogramChart } from './components/SpectrogramChart';
 import { FundamentalFrequencyChart } from './components/FundamentalFrequencyChart';
+import { MultipleNotesChart } from './components/MultipleNotesChart';
 import type { Note } from './utils/musicTheory';
 import './App.css';
+
+type AnalysisMode = 'single' | 'multiple';
 
 function App() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [spectrogramData, setSpectrogramData] = useState<SpectrogramData | null>(null);
   const [fundamentalData, setFundamentalData] = useState<FundamentalFrequencyData | null>(null);
+  const [multipleNotesData, setMultipleNotesData] = useState<MultipleNotesData | null>(null);
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('single');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hoveredNote, setHoveredNote] = useState<Note | null>(null);
+  const [hoveredNotes, setHoveredNotes] = useState<Note[]>([]);
   const [hoveredTime, setHoveredTime] = useState<number | null>(null);
   const [hoveredConfidence, setHoveredConfidence] = useState<number | null>(null);
+  const [hoveredConfidences, setHoveredConfidences] = useState<number[]>([]);
   const [chartWidth, setChartWidth] = useState(800);
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,6 +80,7 @@ function App() {
         clearAudioData();
         setSpectrogramData(null);
         setFundamentalData(null);
+        setMultipleNotesData(null);
         processAudioFile(file);
       } else {
         alert(`サポートされていないファイル形式です。\nファイル名: ${file.name}\nMIMEタイプ: ${file.type || '不明'}\nm4aまたはmp3ファイルを選択してください。`);
@@ -81,7 +89,7 @@ function App() {
   }, [processAudioFile, clearAudioData]);
 
   useEffect(() => {
-    if (audioData && !spectrogramData && !fundamentalData && !isAnalyzing) {
+    if (audioData && !spectrogramData && !fundamentalData && !multipleNotesData && !isAnalyzing) {
       setIsAnalyzing(true);
       
       setTimeout(() => {
@@ -96,14 +104,23 @@ function App() {
             frequencyBins: spectrogram.frequencies.length
           });
           
-          console.log('基本周波数抽出中...');
-          const fundamental = analyzer.extractFundamentalFrequency(spectrogram);
-          console.log('基本周波数抽出完了:', {
-            dataPoints: fundamental.frequencies.length
-          });
+          if (analysisMode === 'single') {
+            console.log('基本周波数抽出中...');
+            const fundamental = analyzer.extractFundamentalFrequency(spectrogram);
+            console.log('基本周波数抽出完了:', {
+              dataPoints: fundamental.frequencies.length
+            });
+            setFundamentalData(fundamental);
+          } else {
+            console.log('複数音程検出中...');
+            const multipleNotes = analyzer.extractMultipleNotes(spectrogram, 5);
+            console.log('複数音程検出完了:', {
+              dataPoints: multipleNotes.noteFrames.length
+            });
+            setMultipleNotesData(multipleNotes);
+          }
           
           setSpectrogramData(spectrogram);
-          setFundamentalData(fundamental);
           console.log('解析完了');
         } catch (err) {
           console.error('解析エラー:', err);
@@ -117,7 +134,7 @@ function App() {
         }
       }, 100);
     }
-  }, [audioData, spectrogramData, fundamentalData, isAnalyzing]);
+  }, [audioData, spectrogramData, fundamentalData, multipleNotesData, isAnalyzing, analysisMode]);
 
   const handleNoteHover = useCallback((note: Note | null, time: number | null, confidence?: number) => {
     // 同じ値の場合は更新をスキップ
@@ -128,6 +145,26 @@ function App() {
     setHoveredTime(time);
     setHoveredConfidence(confidence ?? null);
   }, [hoveredNote?.frequency, hoveredTime]);
+
+  const handleMultipleNotesHover = useCallback((notes: Note[], time: number | null, confidences?: number[]) => {
+    setHoveredNotes(notes);
+    setHoveredTime(time);
+    setHoveredConfidences(confidences ?? []);
+  }, []);
+
+  const handleModeChange = useCallback((mode: AnalysisMode) => {
+    if (mode !== analysisMode) {
+      setAnalysisMode(mode);
+      // モード変更時は解析結果をクリア
+      setFundamentalData(null);
+      setMultipleNotesData(null);
+      setHoveredNote(null);
+      setHoveredNotes([]);
+      setHoveredTime(null);
+      setHoveredConfidence(null);
+      setHoveredConfidences([]);
+    }
+  }, [analysisMode]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -157,6 +194,32 @@ function App() {
         )}
       </div>
 
+      <div className="analysis-mode-selector">
+        <h3>解析モード</h3>
+        <div className="radio-group">
+          <label>
+            <input
+              type="radio"
+              name="analysisMode"
+              value="single"
+              checked={analysisMode === 'single'}
+              onChange={() => handleModeChange('single')}
+            />
+            単音解析（基本周波数）
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="analysisMode"
+              value="multiple"
+              checked={analysisMode === 'multiple'}
+              onChange={() => handleModeChange('multiple')}
+            />
+            複数音程解析（アルペジオ対応）
+          </label>
+        </div>
+      </div>
+
       {error && (
         <div className="error-message">
           <p>{error}</p>
@@ -184,10 +247,10 @@ function App() {
         </div>
       )}
 
-      {spectrogramData && fundamentalData && (
+      {spectrogramData && ((analysisMode === 'single' && fundamentalData) || (analysisMode === 'multiple' && multipleNotesData)) && (
         <div className="analysis-container">
           <div className="spectrum-display">
-            <h3>スペクトログラム + 基本周波数推移</h3>
+            <h3>スペクトログラム + {analysisMode === 'single' ? '基本周波数推移' : '複数音程解析'}</h3>
             <div className="chart-container" ref={chartContainerRef}>
               <SpectrogramChart 
                 data={spectrogramData} 
@@ -195,26 +258,49 @@ function App() {
                 height={400} 
               />
               <div className="overlay-chart">
-                <FundamentalFrequencyChart
-                  data={fundamentalData}
-                  width={chartWidth}
-                  height={400}
-                  onHover={handleNoteHover}
-                  hideAxes={true}
-                />
+                {analysisMode === 'single' && fundamentalData && (
+                  <FundamentalFrequencyChart
+                    data={fundamentalData}
+                    width={chartWidth}
+                    height={400}
+                    onHover={handleNoteHover}
+                    hideAxes={true}
+                  />
+                )}
+                {analysisMode === 'multiple' && multipleNotesData && (
+                  <MultipleNotesChart
+                    data={multipleNotesData}
+                    width={chartWidth}
+                    height={400}
+                    onHover={handleMultipleNotesHover}
+                    hideAxes={true}
+                  />
+                )}
               </div>
             </div>
             <div className="current-note-info">
-              <p><strong>現在の音階:</strong> {hoveredNote ? `${hoveredNote.name}${hoveredNote.octave}` : '-'}</p>
-              <p><strong>時間:</strong> {hoveredTime !== null ? `${hoveredTime.toFixed(2)}秒` : '-'}</p>
-              <p><strong>周波数:</strong> {hoveredNote ? `${hoveredNote.frequency.toFixed(2)}Hz` : '-'}</p>
-              {hoveredNote && Math.abs(hoveredNote.cents) > 5 && (
-                <p><strong>音程のずれ:</strong> {hoveredNote.cents > 0 ? '+' : ''}{hoveredNote.cents}セント</p>
+              {analysisMode === 'single' ? (
+                <>
+                  <p><strong>現在の音階:</strong> {hoveredNote ? `${hoveredNote.name}${hoveredNote.octave}` : '-'}</p>
+                  <p><strong>時間:</strong> {hoveredTime !== null ? `${hoveredTime.toFixed(2)}秒` : '-'}</p>
+                  <p><strong>周波数:</strong> {hoveredNote ? `${hoveredNote.frequency.toFixed(2)}Hz` : '-'}</p>
+                  {hoveredNote && Math.abs(hoveredNote.cents) > 5 && (
+                    <p><strong>音程のずれ:</strong> {hoveredNote.cents > 0 ? '+' : ''}{hoveredNote.cents}セント</p>
+                  )}
+                  {(!hoveredNote || Math.abs(hoveredNote?.cents || 0) <= 5) && (
+                    <p><strong>音程のずれ:</strong> -</p>
+                  )}
+                  <p><strong>信頼度:</strong> {hoveredConfidence !== null ? `${(hoveredConfidence * 100).toFixed(1)}%` : '-'}</p>
+                </>
+              ) : (
+                <>
+                  <p><strong>検出された音階:</strong> {hoveredNotes.length > 0 ? hoveredNotes.map(note => `${note.name}${note.octave}`).join(', ') : '-'}</p>
+                  <p><strong>時間:</strong> {hoveredTime !== null ? `${hoveredTime.toFixed(2)}秒` : '-'}</p>
+                  <p><strong>周波数:</strong> {hoveredNotes.length > 0 ? hoveredNotes.map(note => `${note.frequency.toFixed(2)}Hz`).join(', ') : '-'}</p>
+                  <p><strong>音程数:</strong> {hoveredNotes.length > 0 ? `${hoveredNotes.length}個` : '-'}</p>
+                  <p><strong>平均信頼度:</strong> {hoveredConfidences.length > 0 ? `${(hoveredConfidences.reduce((sum, conf) => sum + conf, 0) / hoveredConfidences.length * 100).toFixed(1)}%` : '-'}</p>
+                </>
               )}
-              {(!hoveredNote || Math.abs(hoveredNote?.cents || 0) <= 5) && (
-                <p><strong>音程のずれ:</strong> -</p>
-              )}
-              <p><strong>信頼度:</strong> {hoveredConfidence !== null ? `${(hoveredConfidence * 100).toFixed(1)}%` : '-'}</p>
             </div>
           </div>
         </div>
