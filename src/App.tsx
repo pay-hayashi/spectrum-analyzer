@@ -24,6 +24,8 @@ function App() {
   const [hoveredConfidence, setHoveredConfidence] = useState<number | null>(null);
   const [hoveredConfidences, setHoveredConfidences] = useState<number[]>([]);
   const [chartWidth, setChartWidth] = useState(800);
+  const [measureCount, setMeasureCount] = useState<number>(4.0);
+  const [bpm, setBpm] = useState<number>(120);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -166,6 +168,43 @@ function App() {
     }
   }, [analysisMode]);
 
+  // 小節とビートの時間を計算する関数
+  const calculateTimeMarkers = useCallback((duration: number) => {
+    if (!duration || measureCount <= 0 || bpm <= 0) return { measureTimes: [], sixteenthTimes: [] };
+    
+    const measureDuration = duration / measureCount;
+    const beatDuration = measureDuration / 4; // 4/4拍子を想定
+    const sixteenthDuration = beatDuration / 4;
+    
+    const measureTimes: number[] = [];
+    const sixteenthTimes: number[] = [];
+    
+    // 小節の境目（小数対応）
+    const wholeMeasures = Math.floor(measureCount);
+    const fractionalPart = measureCount - wholeMeasures;
+    
+    // 整数小節の境目
+    for (let i = 0; i <= wholeMeasures; i++) {
+      measureTimes.push(i * measureDuration);
+    }
+    
+    // 端数がある場合、最後の小節途中の位置も追加
+    if (fractionalPart > 0) {
+      measureTimes.push(wholeMeasures * measureDuration + fractionalPart * measureDuration);
+    }
+    
+    // 16分音符のタイミング（小数小節まで対応）
+    const totalSixteenths = measureCount * 16;
+    for (let sixteenth = 0; sixteenth < totalSixteenths; sixteenth++) {
+      const time = sixteenth * sixteenthDuration;
+      if (time <= duration) {
+        sixteenthTimes.push(time);
+      }
+    }
+    
+    return { measureTimes, sixteenthTimes };
+  }, [measureCount, bpm]);;
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
@@ -220,6 +259,33 @@ function App() {
         </div>
       </div>
 
+      <div className="timing-settings">
+        <h3>タイミング設定</h3>
+        <div className="input-group">
+          <label>
+            小節数:
+            <input
+              type="number"
+              min="0.1"
+              max="32"
+              step="0.1"
+              value={measureCount}
+              onChange={(e) => setMeasureCount(parseFloat(e.target.value) || 4.0)}
+            />
+          </label>
+          <label>
+            BPM (参考):
+            <input
+              type="number"
+              min="60"
+              max="200"
+              value={bpm}
+              onChange={(e) => setBpm(parseInt(e.target.value) || 120)}
+            />
+          </label>
+        </div>
+      </div>
+
       {error && (
         <div className="error-message">
           <p>{error}</p>
@@ -255,7 +321,8 @@ function App() {
               <SpectrogramChart 
                 data={spectrogramData} 
                 width={chartWidth} 
-                height={400} 
+                height={400}
+                {...(audioData && calculateTimeMarkers(audioData.duration))}
               />
               <div className="overlay-chart">
                 {analysisMode === 'single' && fundamentalData && (
@@ -265,6 +332,7 @@ function App() {
                     height={400}
                     onHover={handleNoteHover}
                     hideAxes={true}
+                    {...(audioData && calculateTimeMarkers(audioData.duration))}
                   />
                 )}
                 {analysisMode === 'multiple' && multipleNotesData && (
@@ -274,6 +342,7 @@ function App() {
                     height={400}
                     onHover={handleMultipleNotesHover}
                     hideAxes={true}
+                    {...(audioData && calculateTimeMarkers(audioData.duration))}
                   />
                 )}
               </div>

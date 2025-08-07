@@ -10,6 +10,8 @@ interface FundamentalFrequencyChartProps {
   height?: number;
   onHover?: (note: Note | null, time: number | null, confidence?: number) => void;
   hideAxes?: boolean; // 軸とラベルを非表示にするオプション
+  measureTimes?: number[];
+  sixteenthTimes?: number[];
 }
 
 export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps> = ({
@@ -17,7 +19,9 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
   width = 800,
   height = 300,
   onHover,
-  hideAxes = false
+  hideAxes = false,
+  measureTimes = [],
+  sixteenthTimes = []
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoveredNote, setHoveredNote] = useState<Note | null>(null);
@@ -140,9 +144,39 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
         g.selectAll(".tooltip").remove();
       });
 
+    // 16分音符の縦線（薄い青緑色、点線）
+    sixteenthTimes.forEach(time => {
+      if (time >= 0 && time <= maxTime) {
+        g.append("line")
+          .attr("x1", xScale(time))
+          .attr("x2", xScale(time))
+          .attr("y1", 0)
+          .attr("y2", innerHeight)
+          .attr("stroke", "#00cccc")
+          .attr("stroke-width", 0.8)
+          .attr("opacity", 0.5)
+          .attr("stroke-dasharray", "3,3");
+      }
+    });
+
+    // 小節の縦線（青緑色、太め、実線）
+    measureTimes.forEach(time => {
+      if (time >= 0 && time <= maxTime) {
+        g.append("line")
+          .attr("x1", xScale(time))
+          .attr("x2", xScale(time))
+          .attr("y1", 0)
+          .attr("y2", innerHeight)
+          .attr("stroke", "#00cccc")
+          .attr("stroke-width", 2)
+          .attr("opacity", 0.8);
+      }
+    });
+
     if (!hideAxes) {
       const xAxis = d3.axisBottom(xScale)
-        .tickFormat(d => `${d}s`);
+        .tickFormat(d => `${d}s`)
+        .tickSizeInner(0);
       
       g.append("g")
         .attr("transform", `translate(0,${innerHeight})`)
@@ -156,7 +190,8 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
             return `${(freq / 1000).toFixed(1)}kHz`;
           }
           return `${freq}Hz`;
-        });
+        })
+        .tickSizeInner(0);
       
       g.append("g")
         .call(yAxis);
@@ -204,7 +239,7 @@ export const FundamentalFrequencyChart: React.FC<FundamentalFrequencyChartProps>
       });
     }
 
-  }, [data, width, height]);
+  }, [data, width, height, measureTimes, sixteenthTimes]);
 
   return (
     <div className="fundamental-frequency-chart">

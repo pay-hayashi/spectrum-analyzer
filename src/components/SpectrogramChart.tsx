@@ -6,12 +6,16 @@ interface SpectrogramChartProps {
   data: SpectrogramData;
   width?: number;
   height?: number;
+  measureTimes?: number[];
+  sixteenthTimes?: number[];
 }
 
 export const SpectrogramChart: React.FC<SpectrogramChartProps> = ({
   data,
   width = 800,
-  height = 400
+  height = 400,
+  measureTimes = [],
+  sixteenthTimes = []
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -85,7 +89,8 @@ export const SpectrogramChart: React.FC<SpectrogramChartProps> = ({
     });
 
     const xAxis = d3.axisBottom(xScale)
-      .tickFormat(d => `${d}s`);
+      .tickFormat(d => `${d}s`)
+      .tickSizeInner(0);
     
     g.append("g")
       .attr("transform", `translate(0,${innerHeight})`)
@@ -99,7 +104,8 @@ export const SpectrogramChart: React.FC<SpectrogramChartProps> = ({
           return `${(freq / 1000).toFixed(1)}kHz`;
         }
         return `${freq}Hz`;
-      });
+      })
+      .tickSizeInner(0);
     
     g.append("g")
       .call(yAxis);
@@ -148,7 +154,36 @@ export const SpectrogramChart: React.FC<SpectrogramChartProps> = ({
       .attr("transform", `translate(${legendWidth}, 0)`)
       .call(legendAxis);
 
-  }, [data, width, height]);
+    // 16分音符の縦線（薄い黄色、背景に溶け込みにくい色）
+    sixteenthTimes.forEach(time => {
+      if (time >= 0 && time <= maxTime) {
+        g.append("line")
+          .attr("x1", xScale(time))
+          .attr("x2", xScale(time))
+          .attr("y1", 0)
+          .attr("y2", innerHeight)
+          .attr("stroke", "#ffff00")
+          .attr("stroke-width", 0.8)
+          .attr("opacity", 0.4)
+          .attr("stroke-dasharray", "2,2");
+      }
+    });
+
+    // 小節の縦線（明るい黄色、太め、実線）
+    measureTimes.forEach(time => {
+      if (time >= 0 && time <= maxTime) {
+        g.append("line")
+          .attr("x1", xScale(time))
+          .attr("x2", xScale(time))
+          .attr("y1", 0)
+          .attr("y2", innerHeight)
+          .attr("stroke", "#ffff00")
+          .attr("stroke-width", 2.5)
+          .attr("opacity", 0.8);
+      }
+    });
+
+  }, [data, width, height, measureTimes, sixteenthTimes]);
 
   return (
     <div className="spectrogram-chart">

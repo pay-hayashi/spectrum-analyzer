@@ -10,6 +10,8 @@ interface MultipleNotesChartProps {
   height?: number;
   onHover?: (notes: Note[], time: number | null, confidences?: number[]) => void;
   hideAxes?: boolean;
+  measureTimes?: number[];
+  sixteenthTimes?: number[];
 }
 
 export const MultipleNotesChart: React.FC<MultipleNotesChartProps> = ({
@@ -17,7 +19,9 @@ export const MultipleNotesChart: React.FC<MultipleNotesChartProps> = ({
   width = 800,
   height = 300,
   onHover,
-  hideAxes = false
+  hideAxes = false,
+  measureTimes = [],
+  sixteenthTimes = []
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -117,9 +121,39 @@ export const MultipleNotesChart: React.FC<MultipleNotesChartProps> = ({
       });
     });
 
+    // 16分音符の縦線（薄いマゼンタ色、点線）
+    sixteenthTimes.forEach(time => {
+      if (time >= 0 && time <= maxTime) {
+        g.append("line")
+          .attr("x1", xScale(time))
+          .attr("x2", xScale(time))
+          .attr("y1", 0)
+          .attr("y2", innerHeight)
+          .attr("stroke", "#ff00ff")
+          .attr("stroke-width", 0.8)
+          .attr("opacity", 0.4)
+          .attr("stroke-dasharray", "3,3");
+      }
+    });
+
+    // 小節の縦線（マゼンタ色、太め、実線）
+    measureTimes.forEach(time => {
+      if (time >= 0 && time <= maxTime) {
+        g.append("line")
+          .attr("x1", xScale(time))
+          .attr("x2", xScale(time))
+          .attr("y1", 0)
+          .attr("y2", innerHeight)
+          .attr("stroke", "#ff00ff")
+          .attr("stroke-width", 2)
+          .attr("opacity", 0.7);
+      }
+    });
+
     if (!hideAxes) {
       const xAxis = d3.axisBottom(xScale)
-        .tickFormat(d => `${d}s`);
+        .tickFormat(d => `${d}s`)
+        .tickSizeInner(0);
       
       g.append("g")
         .attr("transform", `translate(0,${innerHeight})`)
@@ -133,7 +167,8 @@ export const MultipleNotesChart: React.FC<MultipleNotesChartProps> = ({
             return `${(freq / 1000).toFixed(1)}kHz`;
           }
           return `${freq}Hz`;
-        });
+        })
+        .tickSizeInner(0);
       
       g.append("g")
         .call(yAxis);
@@ -181,7 +216,7 @@ export const MultipleNotesChart: React.FC<MultipleNotesChartProps> = ({
       });
     }
 
-  }, [data, width, height]);
+  }, [data, width, height, measureTimes, sixteenthTimes]);
 
   return (
     <div className="multiple-notes-chart">
