@@ -6,6 +6,11 @@ export interface SpectrogramData {
   magnitudes: number[][];
 }
 
+export interface FrequencySpectrumData {
+  frequencies: number[];
+  magnitudes: number[];
+}
+
 export interface FundamentalFrequencyData {
   times: number[];
   frequencies: number[];
@@ -120,6 +125,31 @@ export class AudioAnalyzer {
     return {
       times: spectrogramData.times,
       noteFrames
+    };
+  }
+
+  public calculateOverallFrequencySpectrum(spectrogramData: SpectrogramData): FrequencySpectrumData {
+    const frequencies = spectrogramData.frequencies;
+    const overallMagnitudes = new Array(frequencies.length).fill(0);
+    
+    // 全時間フレームにわたって各周波数の強度を積算
+    for (const magnitudeFrame of spectrogramData.magnitudes) {
+      for (let i = 0; i < magnitudeFrame.length && i < overallMagnitudes.length; i++) {
+        overallMagnitudes[i] += magnitudeFrame[i];
+      }
+    }
+    
+    // 平均化（時間フレーム数で割る）
+    const frameCount = spectrogramData.magnitudes.length;
+    if (frameCount > 0) {
+      for (let i = 0; i < overallMagnitudes.length; i++) {
+        overallMagnitudes[i] /= frameCount;
+      }
+    }
+    
+    return {
+      frequencies,
+      magnitudes: overallMagnitudes
     };
   }
 
