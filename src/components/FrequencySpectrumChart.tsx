@@ -186,7 +186,7 @@ const FrequencySpectrumChart: React.FC<FrequencySpectrumChartProps> = ({
       .attr("stroke-dasharray", "3,3");
 
     // インタラクション用の透明な矩形
-    const overlay = g.append("rect")
+    g.append("rect")
       .attr("class", "overlay")
       .attr("width", innerWidth)
       .attr("height", innerHeight)
@@ -200,11 +200,10 @@ const FrequencySpectrumChart: React.FC<FrequencySpectrumChartProps> = ({
         setTooltip(prev => ({ ...prev, visible: false }));
       })
       .on("mousemove", (event) => {
-        const [mouseX, mouseY] = d3.pointer(event);
+        const [mouseX] = d3.pointer(event);
         
-        // マウス位置から周波数と強度を逆算
+        // マウス位置から周波数を逆算
         const frequency = xScale.invert(mouseX);
-        const magnitude = yScale.invert(mouseY);
         
         // 最も近いデータポイントを見つける
         const bisector = d3.bisector((d: { frequency: number; magnitude: number }) => d.frequency).left;
