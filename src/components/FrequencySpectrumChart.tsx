@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
 import type { FrequencySpectrumData } from '../utils/audioAnalysis';
 
@@ -14,6 +14,19 @@ const FrequencySpectrumChart: React.FC<FrequencySpectrumChartProps> = ({
   height = 400
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [tooltip, setTooltip] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    frequency: number;
+    magnitude: number;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    frequency: 0,
+    magnitude: 0
+  });
 
   useEffect(() => {
     if (!data || !svgRef.current) return;
@@ -149,10 +162,89 @@ const FrequencySpectrumChart: React.FC<FrequencySpectrumChartProps> = ({
       .style("font-size", "11px")
       .style("fill", "#6b7280");
 
+    // 十字線の要素を追加（初期状態では非表示）
+    const crosshair = g.append("g")
+      .attr("class", "crosshair")
+      .style("display", "none");
+
+    // 縦線
+    const verticalLine = crosshair.append("line")
+      .attr("class", "vertical-line")
+      .attr("y1", 0)
+      .attr("y2", innerHeight)
+      .attr("stroke", "#666666")
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "3,3");
+
+    // 横線
+    const horizontalLine = crosshair.append("line")
+      .attr("class", "horizontal-line")
+      .attr("x1", 0)
+      .attr("x2", innerWidth)
+      .attr("stroke", "#666666")
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "3,3");
+
+    // インタラクション用の透明な矩形
+    const overlay = g.append("rect")
+      .attr("class", "overlay")
+      .attr("width", innerWidth)
+      .attr("height", innerHeight)
+      .attr("fill", "none")
+      .attr("pointer-events", "all")
+      .on("mouseover", () => {
+        crosshair.style("display", null);
+      })
+      .on("mouseout", () => {
+        crosshair.style("display", "none");
+        setTooltip(prev => ({ ...prev, visible: false }));
+      })
+      .on("mousemove", (event) => {
+        const [mouseX, mouseY] = d3.pointer(event);
+        
+        // マウス位置から周波数と強度を逆算
+        const frequency = xScale.invert(mouseX);
+        const magnitude = yScale.invert(mouseY);
+        
+        // 最も近いデータポイントを見つける
+        const bisector = d3.bisector((d: { frequency: number; magnitude: number }) => d.frequency).left;
+        const index = bisector(filteredData, frequency);
+        const d0 = filteredData[index - 1];
+        const d1 = filteredData[index];
+        
+        let closestData;
+        if (!d0) {
+          closestData = d1;
+        } else if (!d1) {
+          closestData = d0;
+        } else {
+          closestData = frequency - d0.frequency > d1.frequency - frequency ? d1 : d0;
+        }
+        
+        if (closestData) {
+          const x = xScale(closestData.frequency);
+          const y = yScale(closestData.magnitude);
+          
+          // 十字線の位置を更新
+          verticalLine.attr("x1", x).attr("x2", x);
+          horizontalLine.attr("y1", y).attr("y2", y);
+          
+          // ツールチップの位置と内容を更新
+          const svgRect = svgRef.current!.getBoundingClientRect();
+          setTooltip({
+            visible: true,
+            x: svgRect.left + margin.left + x + 10,
+            y: svgRect.top + margin.top + y - 10,
+            frequency: closestData.frequency,
+            magnitude: closestData.magnitude
+          });
+        }
+      });
+
   }, [data, width, height]);
 
   return (
-    <div className="frequency-spectrum-chart">
+    <div className="frequency-spectrum-chart" style={{ position: 'relative' }}>
       <h3 style={{ 
         margin: '0 0 16px 0', 
         fontSize: '16px', 
@@ -171,6 +263,31 @@ const FrequencySpectrumChart: React.FC<FrequencySpectrumChartProps> = ({
           backgroundColor: '#ffffff'
         }}
       />
+      {/* ツールチップ */}
+      {tooltip.visible && (
+        <div
+          style={{
+            position: 'fixed',
+            left: tooltip.x,
+            top: tooltip.y,
+            background: 'rgba(0, 0, 0, 0.8)',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontWeight: '500',
+            pointerEvents: 'none',
+            zIndex: 1000,
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <div>周波数: {tooltip.frequency >= 1000 ? 
+            `${(tooltip.frequency / 1000).toFixed(2)}kHz` : 
+            `${tooltip.frequency.toFixed(0)}Hz`}
+          </div>
+          <div>強度: {tooltip.magnitude.toFixed(3)}</div>
+        </div>
+      )}
     </div>
   );
 };
