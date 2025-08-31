@@ -94,7 +94,14 @@ function App() {
   }, [processAudioFile, clearAudioData]);
 
   useEffect(() => {
-    if (audioData && !spectrogramData && !fundamentalData && !multipleNotesData && !frequencySpectrumData && !isAnalyzing) {
+    const needsAnalysis = audioData && !isAnalyzing && (
+      !spectrogramData || 
+      (analysisMode === 'single' && !fundamentalData) ||
+      (analysisMode === 'multiple' && !multipleNotesData) ||
+      (analysisMode === 'spectrum' && !frequencySpectrumData)
+    );
+
+    if (needsAnalysis) {
       setIsAnalyzing(true);
       
       setTimeout(() => {
@@ -102,28 +109,32 @@ function App() {
           console.log('スペクトル解析開始');
           const analyzer = new AudioAnalyzer(2048, 512);
           
-          console.log('スペクトログラム計算中...');
-          const spectrogram = analyzer.analyzeSpectrum(audioData.audioBuffer);
-          console.log('スペクトログラム完了:', {
-            timeFrames: spectrogram.times.length,
-            frequencyBins: spectrogram.frequencies.length
-          });
+          let spectrogram = spectrogramData;
+          if (!spectrogram) {
+            console.log('スペクトログラム計算中...');
+            spectrogram = analyzer.analyzeSpectrum(audioData.audioBuffer);
+            console.log('スペクトログラム完了:', {
+              timeFrames: spectrogram.times.length,
+              frequencyBins: spectrogram.frequencies.length
+            });
+            setSpectrogramData(spectrogram);
+          }
 
-          if (analysisMode === 'spectrum') {
+          if (analysisMode === 'spectrum' && !frequencySpectrumData) {
             console.log('周波数スペクトラム計算中...');
             const frequencySpectrum = analyzer.calculateOverallFrequencySpectrum(spectrogram);
             console.log('周波数スペクトラム完了:', {
               frequencyPoints: frequencySpectrum.frequencies.length
             });
             setFrequencySpectrumData(frequencySpectrum);
-          } else if (analysisMode === 'single') {
+          } else if (analysisMode === 'single' && !fundamentalData) {
             console.log('基本周波数抽出中...');
             const fundamental = analyzer.extractFundamentalFrequency(spectrogram);
             console.log('基本周波数抽出完了:', {
               dataPoints: fundamental.frequencies.length
             });
             setFundamentalData(fundamental);
-          } else {
+          } else if (analysisMode === 'multiple' && !multipleNotesData) {
             console.log('複数音程検出中...');
             const multipleNotes = analyzer.extractMultipleNotes(spectrogram, 5);
             console.log('複数音程検出完了:', {
@@ -132,7 +143,6 @@ function App() {
             setMultipleNotesData(multipleNotes);
           }
           
-          setSpectrogramData(spectrogram);
           console.log('解析完了');
         } catch (err) {
           console.error('解析エラー:', err);
@@ -146,7 +156,7 @@ function App() {
         }
       }, 100);
     }
-  }, [audioData, spectrogramData, fundamentalData, multipleNotesData, frequencySpectrumData, isAnalyzing, analysisMode]);
+  }, [audioData, fundamentalData, multipleNotesData, frequencySpectrumData, isAnalyzing, analysisMode, spectrogramData]);
 
   const handleNoteHover = useCallback((note: Note | null, time: number | null, confidence?: number) => {
     // 同じ値の場合は更新をスキップ
